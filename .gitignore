@@ -1,0 +1,10 @@
+node_modules/
+.env
+*.log
+npm-debug.log*
+.DS_Store
+.vscode/
+.idea/
+*.iml
+PLAN.md
+SERVE_REQ.md
