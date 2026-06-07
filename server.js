@@ -18,6 +18,12 @@ const b24Api = axios.create({
   baseURL: B24_WEBHOOK_URL,
 });
 
+function extractFileId(data) {
+  if (Array.isArray(data) && data[0]) return data[0];
+  if (data && typeof data === 'object' && data.id) return data.id;
+  return null;
+}
+
 function extractResult(resp) {
   if (resp.data && typeof resp.data === 'object' && 'result' in resp.data) {
     return resp.data.result;
@@ -206,11 +212,10 @@ app.all('/inject-products', async (req, res) => {
     const dealInfo = extractResult(dealResp);
 
     const sourceFileData = dealInfo[DEAL_FILE_SOURCE];
-    if (!sourceFileData || !Array.isArray(sourceFileData) || !sourceFileData[0]) {
+    const sourceFileId = extractFileId(sourceFileData);
+    if (!sourceFileId) {
       throw new Error(`Source field ${DEAL_FILE_SOURCE} is empty or missing on deal ${deal_id}`);
     }
-
-    const sourceFileId = sourceFileData[0];
     const downloadUrl = `${B24_WEBHOOK_URL}crm.controller.item.getFile?entityTypeId=2&id=${deal_id}&fieldName=${DEAL_FILE_SOURCE}&fileId=${sourceFileId}`;
 
     const docxResp = await axios.get(downloadUrl, { responseType: 'arraybuffer' });
@@ -256,8 +261,9 @@ app.all('/inject-products', async (req, res) => {
     const updatedDealResp = await b24Api.post('crm.deal.get', { id: deal_id });
     const updatedDeal = extractResult(updatedDealResp);
     const savedFileData = updatedDeal[DEAL_FILE_TARGET];
-    if (savedFileData && Array.isArray(savedFileData) && savedFileData[0]) {
-      const fileUrl = `${B24_WEBHOOK_URL}crm.controller.item.getFile?entityTypeId=2&id=${deal_id}&fieldName=${DEAL_FILE_TARGET}&fileId=${savedFileData[0]}`;
+    const savedFileId = extractFileId(savedFileData);
+    if (savedFileId) {
+      const fileUrl = `${B24_WEBHOOK_URL}crm.controller.item.getFile?entityTypeId=2&id=${deal_id}&fieldName=${DEAL_FILE_TARGET}&fileId=${savedFileId}`;
       await b24Api.post('crm.timeline.comment.add', {
         fields: {
           ENTITY_ID: Number(deal_id),
